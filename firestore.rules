@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in [
+          "jamil.orata@gmail.com",
+          "jamilorata@gmail.com"
+        ];
+    }
+
+    match /projects/{projectId} {
+      allow read: if resource.data.visibility == "published" || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /blogPosts/{postId} {
+      allow read: if resource.data.status == "published" || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /technologies/{technologyId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /profile/main {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/site {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/options {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

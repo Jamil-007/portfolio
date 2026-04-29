@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink: rgba(0, 0, 0, 0.95);
+  --color-muted: #615d59;
+  --color-quiet: #a39e98;
+  --color-paper: #f6f5f4;
+  --color-blue: #0075de;
+  --color-blue-active: #005bab;
+  --border-whisper: 1px solid rgba(0, 0, 0, 0.1);
+  --shadow-card: rgba(0, 0, 0, 0.04) 0px 4px 18px,
+    rgba(0, 0, 0, 0.027) 0px 2.025px 7.84688px,
+    rgba(0, 0, 0, 0.02) 0px 0.8px 2.925px,
+    rgba(0, 0, 0, 0.01) 0px 0.175px 1.04062px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--color-ink);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+    Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #097fe8;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #f2f9ff;
+  color: #005bab;
+}
+
+section[id] {
+  scroll-margin-top: 80px;
+}
+
+.container {
+  width: min(1120px, calc(100% - 32px));
+  margin-inline: auto;
+}
+
+.whisper-card {
+  background: #ffffff;
+  border: var(--border-whisper);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.section-pad {
+  padding-block: 72px;
+}
+
+@media (max-width: 700px) {
+  .section-pad {
+    padding-block: 48px 128px;
+  }
+}
