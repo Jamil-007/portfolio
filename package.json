@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@vercel/blob": "^2.3.3",
     "firebase": "^12.12.1",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.468.0",

@@ -13,6 +13,7 @@ import { TextInput } from "@/components/admin/TextInput/TextInput";
 import { TextArea } from "@/components/admin/TextArea/TextArea";
 import { Select } from "@/components/admin/Select/Select";
 import { FormActions } from "@/components/admin/FormActions/FormActions";
+import { ImageUpload } from "@/components/admin/ImageUpload/ImageUpload";
 import { ItemList } from "@/components/admin/ItemList/ItemList";
 
 type ProjectFormValues = Omit<Project, "id" | "screenshots"> & {
@@ -191,7 +192,12 @@ export function ProjectsAdmin({ projects, technologies, settings, setMessage }: 
             <TextInput label="Repository URL" {...register("repositoryUrl")} />
             <TextInput label="Live URL" {...register("liveUrl")} />
           </div>
-          <TextInput label="Cover image URL" {...register("coverImage")} />
+          <input type="hidden" {...register("coverImage")} />
+          <ImageUpload
+            label="Cover image"
+            value={watch("coverImage") ?? ""}
+            onChange={(url) => setValue("coverImage", url, { shouldDirty: true, shouldTouch: true })}
+          />
           <div className="grid gap-3 sm:grid-cols-2">
             <Select label="Role" {...register("role")}>
               {optionChoices(settings.projectRoles, watch("role")).map((option) => (
