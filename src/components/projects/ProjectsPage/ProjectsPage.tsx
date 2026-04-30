@@ -6,7 +6,7 @@ import { subscribeToPortfolioData } from "@/lib/firestore-data";
 import { emptyPortfolioData } from "@/lib/empty-data";
 import type { PortfolioData } from "@/lib/types";
 import { projectMatchesSkill, settingsOptionLabel, settingsOptionsWithUsedValues, skillLabels } from "@/lib/portfolio-utils";
-import { ProjectCard } from "@/components/projects/ProjectCard/ProjectCard";
+import { ProjectCard } from "@/components/shared/ProjectCard/ProjectCard";
 import { SearchableDropdown } from "@/components/projects/SearchableDropdown/SearchableDropdown";
 import { NavPill } from "@/components/layout/NavPill/NavPill";
 import { BackHomeLink } from "@/components/layout/BackHomeLink/BackHomeLink";

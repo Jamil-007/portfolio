@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type { PortfolioData } from "@/lib/types";
-import { ProjectCard } from "@/components/projects/ProjectCard/ProjectCard";
+import { ProjectCard } from "@/components/shared/ProjectCard/ProjectCard";
 
 export function RelatedProjectsModal({
   label,
