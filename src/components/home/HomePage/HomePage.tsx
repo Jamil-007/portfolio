@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight, Github, Linkedin, Search, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Github, Linkedin, Search, Sparkles } from "lucide-react";
 import { subscribeToPortfolioData } from "@/lib/firestore-data";
 import { emptyPortfolioData } from "@/lib/empty-data";
 import type { PortfolioData } from "@/lib/types";
 import { projectMatchesSkill } from "@/lib/portfolio-utils";
-import { ProjectCard } from "@/components/projects/ProjectCard/ProjectCard";
+import { ProjectCard } from "@/components/shared/ProjectCard/ProjectCard";
 import { NavPill } from "@/components/layout/NavPill/NavPill";
 import { ChatbotPreview } from "@/components/layout/ChatbotPreview/ChatbotPreview";
 import { TechnologyIcon } from "@/components/shared/TechnologyIcon/TechnologyIcon";
@@ -27,6 +27,9 @@ export function HomePage() {
   const [skillPage, setSkillPage] = useState(0);
   const [skillSearch, setSkillSearch] = useState("");
   const [projectModal, setProjectModal] = useState<{ kind: "tech" | "skill"; name: string } | null>(null);
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [techOpen, setTechOpen] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
 
   useEffect(() => subscribeToPortfolioData(setData), []);
 
@@ -178,9 +181,22 @@ export function HomePage() {
       <section id="tech-stack" className="bg-white pb-16">
         <div className="container grid gap-12 lg:grid-cols-2">
           <div id="skills">
-            <h2 className="text-[28px] font-bold leading-none text-ink sm:text-[36px]">
-              Skills <span className="font-normal text-muted">({skills.length})</span>
-            </h2>
+            <button
+              type="button"
+              aria-expanded={skillsOpen}
+              onClick={() => setSkillsOpen((value) => !value)}
+              className="flex items-center gap-2 text-left text-[28px] font-bold leading-none text-ink sm:text-[36px]"
+            >
+              <span>
+                Skills <span className="font-normal text-muted">({skills.length})</span>
+              </span>
+              <ChevronDown
+                size={24}
+                className={`text-muted transition-transform ${skillsOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {skillsOpen ? (
+              <>
             <div className="mb-3 mt-4 flex flex-wrap items-center gap-2">
               <label className="relative w-36 sm:w-40">
                 <span className="sr-only">Search skills</span>
@@ -224,11 +240,26 @@ export function HomePage() {
                 />
               ))}
             </div>
+              </>
+            ) : null}
           </div>
           <div>
-            <h2 className="text-[28px] font-bold leading-none text-ink sm:text-[36px]">
-              Tech <span className="font-normal text-muted">({featuredTechnologies.length})</span>
-            </h2>
+            <button
+              type="button"
+              aria-expanded={techOpen}
+              onClick={() => setTechOpen((value) => !value)}
+              className="flex items-center gap-2 text-left text-[28px] font-bold leading-none text-ink sm:text-[36px]"
+            >
+              <span>
+                Tech <span className="font-normal text-muted">({featuredTechnologies.length})</span>
+              </span>
+              <ChevronDown
+                size={24}
+                className={`text-muted transition-transform ${techOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {techOpen ? (
+              <>
             <div className="mb-3 mt-4 flex flex-wrap items-center gap-2">
               <label className="relative w-36 sm:w-40">
                 <span className="sr-only">Search tech stack</span>
@@ -272,29 +303,44 @@ export function HomePage() {
                 />
               ))}
             </div>
+              </>
+            ) : null}
           </div>
         </div>
       </section>
       <section id="featured" className="section-pad bg-white">
         <div className="container">
           <div className="mb-8">
-            <div>
-              <h2 className="text-[36px] font-bold leading-none tracking-[-1px] text-ink sm:text-[48px] sm:tracking-[-1.5px]">
-                My Favorite Projects
-              </h2>
+            <button
+              type="button"
+              aria-expanded={projectsOpen}
+              onClick={() => setProjectsOpen((value) => !value)}
+              className="flex items-center gap-2 text-left text-[36px] font-bold leading-none tracking-[-1px] text-ink sm:text-[48px] sm:tracking-[-1.5px]"
+            >
+              <span>My Favorite Projects</span>
+              <ChevronDown
+                size={32}
+                className={`text-muted transition-transform ${projectsOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {projectsOpen ? (
               <p className="mt-3 max-w-2xl text-base leading-6 text-muted">
                 The work recruiters should see first: finished builds, useful experiments, and active projects labeled clearly.
               </p>
-            </div>
+            ) : null}
           </div>
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {featuredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} settings={data.settings} />
-            ))}
-          </div>
-          <Link href="/projects" className="mt-6 inline-flex items-center gap-2 rounded bg-[#0075de] px-3 py-2 text-sm font-semibold text-white hover:bg-[#005bab] sm:px-4 sm:text-[15px]">
-            View all projects <ArrowRight size={16} />
-          </Link>
+          {projectsOpen ? (
+            <>
+              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {featuredProjects.map((project) => (
+                  <ProjectCard key={project.id} project={project} settings={data.settings} />
+                ))}
+              </div>
+              <Link href="/projects" className="mt-6 inline-flex items-center gap-2 rounded bg-[#0075de] px-3 py-2 text-sm font-semibold text-white hover:bg-[#005bab] sm:px-4 sm:text-[15px]">
+                View all projects <ArrowRight size={16} />
+              </Link>
+            </>
+          ) : null}
         </div>
       </section>
     </main>
