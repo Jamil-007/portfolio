@@ -1,88 +1,82 @@
 "use client";
 
-import { useState } from "react";
-import { ExternalLink, Github, ImageIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, ExternalLink, Github, ImageIcon } from "lucide-react";
 import { formatLabel } from "@/lib/analytics";
-import type { PortfolioSettings, Project, SettingsOption } from "@/lib/types";
-import { Badge } from "@/components/shared/Badge/Badge";
+import type { Project, ProjectType } from "@/lib/types";
 
-export function ProjectCard({ project, settings }: { project: Project; settings?: PortfolioSettings }) {
-  const [flipped, setFlipped] = useState(false);
-  const typeLabel = settings ? optionLabel(settings.projectTypes, project.type) : formatLabel(project.type);
+export function ProjectCard({ project, projectTypes }: { project: Project; projectTypes?: ProjectType[] }) {
+  const typeLabel = projectTypes ? lookupLabel(projectTypes, project.type) : formatLabel(project.type);
 
   return (
-    <article>
-      <div className="group aspect-video [perspective:1200px]">
-      <div
-        tabIndex={0}
-        aria-label={`${project.title} project card`}
-        className={`relative h-full cursor-pointer rounded-lg outline-none transition-transform duration-500 [transform-style:preserve-3d] focus-visible:ring-2 focus-visible:ring-[#0075de] focus-visible:ring-offset-2 group-hover:[transform:rotateY(180deg)] group-focus-within:[transform:rotateY(180deg)] ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
-        onClick={() => setFlipped((value) => !value)}
+    <article className="group flex flex-col">
+      <Link
+        href={`/projects/${project.slug}`}
+        className="block overflow-hidden rounded-lg bg-paper ring-1 ring-[rgba(23,23,23,0.08)] transition-shadow hover:ring-ink/30"
       >
-        <div className="whisper-card absolute inset-0 overflow-hidden p-0 [backface-visibility:hidden]">
-          <div className="h-full w-full overflow-hidden bg-[#f2f9ff]">
-            {project.coverImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={project.coverImage} alt={`${project.title} preview`} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[linear-gradient(135deg,#f2f9ff,#ffffff)] px-6 text-center">
-                <ImageIcon size={36} className="text-[#0075de]" />
-                <span className="text-sm font-semibold text-muted">Project preview coming soon</span>
-              </div>
-            )}
+        <div className="relative aspect-[16/10] overflow-hidden">
+          {project.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={project.coverImage}
+              alt={`${project.title} preview`}
+              className="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04]"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#fbf8f2,#f5f1ea)]">
+              <ImageIcon size={32} className="text-quiet" />
+            </div>
+          )}
+          <div className="pointer-events-none absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-ink/80 text-cream opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+            <ArrowUpRight size={14} />
           </div>
         </div>
-        <div className="whisper-card absolute inset-0 flex h-full flex-col overflow-y-auto p-5 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Badge tone="neutral">{typeLabel}</Badge>
-          </div>
-          <h3 className="text-[22px] font-bold leading-tight tracking-[-0.25px] text-ink">
-            {project.title}
-          </h3>
-          <p className="mt-3 text-base leading-6 text-muted">{project.shortDescription}</p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {project.technologies.slice(0, 5).map((tech) => (
-              <Badge key={tech} tone="neutral">
-                {tech}
-              </Badge>
+      </Link>
+      <div className="mt-4 flex flex-1 flex-col">
+        <span className="mono-label text-quiet">{typeLabel}</span>
+        <h3 className="serif-display mt-2 text-[28px] leading-[1.02] text-ink transition-colors group-hover:text-accent">
+          <Link href={`/projects/${project.slug}`}>{project.title}</Link>
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-muted line-clamp-3">{project.shortDescription}</p>
+        {project.technologies.length ? (
+          <div className="mt-3 flex flex-wrap gap-x-2.5 gap-y-1 font-mono text-[11px] tracking-tight text-muted">
+            {project.technologies.slice(0, 5).map((tech, i) => (
+              <span key={tech} className="inline-flex items-center gap-2">
+                {i > 0 ? <span className="text-quiet">/</span> : null}
+                <span>{tech}</span>
+              </span>
             ))}
           </div>
-        </div>
+        ) : null}
+        {project.liveUrl || project.repositoryUrl ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {project.liveUrl ? (
+              <a
+                href={project.liveUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink bg-ink px-3 py-1.5 text-[11px] font-medium text-cream transition hover:bg-accent hover:border-accent"
+              >
+                <ExternalLink size={12} /> Live
+              </a>
+            ) : null}
+            {project.repositoryUrl ? (
+              <a
+                href={project.repositoryUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(23,23,23,0.18)] px-3 py-1.5 text-[11px] font-medium text-ink transition hover:border-ink"
+              >
+                <Github size={12} /> Repo
+              </a>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      </div>
-      <h3 className="mt-3 text-[20px] font-bold leading-tight tracking-[-0.25px] text-ink">
-        {project.title}
-      </h3>
-      {project.liveUrl || project.repositoryUrl ? (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {project.liveUrl ? (
-            <a
-              href={project.liveUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-8 items-center gap-1 rounded-full border border-[#0075de] bg-[#0075de] px-3 text-xs font-semibold text-white transition hover:bg-[#005bab]"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <ExternalLink size={14} /> Live
-            </a>
-          ) : null}
-          {project.repositoryUrl ? (
-            <a
-              href={project.repositoryUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-8 items-center gap-1 rounded-full border border-black/10 bg-white px-3 text-xs font-semibold text-ink transition hover:border-black/20 hover:bg-black/[0.04]"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Github size={14} /> Repo
-            </a>
-          ) : null}
-        </div>
-      ) : null}
     </article>
   );
 }
 
-function optionLabel(options: SettingsOption[], value: string) {
-  return options.find((option) => option.id === value)?.label ?? formatLabel(value);
+function lookupLabel(projectTypes: ProjectType[], value: string) {
+  return projectTypes.find((type) => type.id === value)?.label ?? formatLabel(value);
 }

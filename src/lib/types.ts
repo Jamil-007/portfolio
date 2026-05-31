@@ -1,40 +1,16 @@
-export type ProjectType = string;
-
-export type Visibility = "draft" | "published";
-
 export type Project = {
   id: string;
   title: string;
   slug: string;
   shortDescription: string;
-  longDescription: string;
-  type: ProjectType;
+  type: string;
   technologies: string[];
-  featured: boolean;
+  skills?: string[];
   repositoryUrl?: string;
   liveUrl?: string;
   coverImage?: string;
-  screenshots?: string[];
-  skills?: string[];
-  role: string;
-  visibility: Visibility;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-export type BlogPost = {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  coverImage?: string;
-  content: string;
-  tags: string[];
-  publishedAt?: string;
-  status: Visibility;
-  relatedProjects?: string[];
-  createdAt?: string;
-  updatedAt?: string;
+  // The long-form description body lives in `content/projects/<slug>.md`,
+  // loaded by `getProjectBody(slug)` and rendered on the detail page.
 };
 
 export type Technology = {
@@ -45,39 +21,28 @@ export type Technology = {
 
 export type Profile = {
   name: string;
-  role: string;
-  shortBio: string;
-  about: string;
   photoUrl?: string;
-  funFact: string;
-  resumeUrl: string;
   githubUrl: string;
   linkedinUrl: string;
   email: string;
-  location?: string;
 };
 
-export type PortfolioData = {
-  profile: Profile;
-  projects: Project[];
-  blogPosts: BlogPost[];
-  technologies: Technology[];
-  settings: PortfolioSettings;
-};
-
-export type SettingsOption = {
+export type ProjectType = {
   id: string;
   label: string;
 };
 
-export type SkillSetting = {
+export type Skill = {
   id: string;
   name: string;
   iconKey: string;
 };
 
-export type PortfolioSettings = {
-  projectTypes: SettingsOption[];
-  projectRoles: SettingsOption[];
-  skills: SkillSetting[];
+export type PortfolioData = {
+  profile: Profile;
+  favoriteProjectSlug: string;
+  projects: Project[];
+  technologies: Technology[];
+  skills: Skill[];
+  projectTypes: ProjectType[];
 };

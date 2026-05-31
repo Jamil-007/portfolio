@@ -2,347 +2,379 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Github, Linkedin, Search, Sparkles } from "lucide-react";
-import { subscribeToPortfolioData } from "@/lib/firestore-data";
-import { emptyPortfolioData } from "@/lib/empty-data";
-import type { PortfolioData } from "@/lib/types";
-import { projectMatchesSkill } from "@/lib/portfolio-utils";
-import { ProjectCard } from "@/components/shared/ProjectCard/ProjectCard";
-import { NavPill } from "@/components/layout/NavPill/NavPill";
-import { ChatbotPreview } from "@/components/layout/ChatbotPreview/ChatbotPreview";
+import { ArrowDown, ArrowUpRight, Github, Linkedin, Mail, Search, Sparkles, X } from "lucide-react";
+import { portfolioData } from "@/lib/portfolio-data";
+import { SiteHeader } from "@/components/layout/SiteHeader/SiteHeader";
+import { ProjectRow } from "@/components/shared/ProjectRow/ProjectRow";
 import { TechnologyIcon } from "@/components/shared/TechnologyIcon/TechnologyIcon";
 import { SkillPill, skillIconMap } from "@/components/shared/SkillPill/SkillPill";
-import { DesktopHeroPhoto, MobileHeroPhoto } from "@/components/home/HeroPhoto/HeroPhoto";
-import { FunFactModal } from "@/components/home/FunFact/FunFact";
+import { useReveal } from "@/components/home/UseReveal/useReveal";
 import { RelatedProjectsModal } from "@/components/home/RelatedProjectsModal/RelatedProjectsModal";
 
-const TECH_PAGE_SIZE = 10;
-const SKILL_PAGE_SIZE = 5;
+type ProjectModalTarget =
+  | { kind: "tech"; id: string; name: string }
+  | { kind: "skill"; id: string; name: string };
 
 export function HomePage() {
-  const [data, setData] = useState<PortfolioData>(emptyPortfolioData);
-  const [showFunFact, setShowFunFact] = useState(false);
-  const [techPage, setTechPage] = useState(0);
-  const [techSearch, setTechSearch] = useState("");
-  const [skillPage, setSkillPage] = useState(0);
-  const [skillSearch, setSkillSearch] = useState("");
-  const [projectModal, setProjectModal] = useState<{ kind: "tech" | "skill"; name: string } | null>(null);
-  const [skillsOpen, setSkillsOpen] = useState(false);
-  const [techOpen, setTechOpen] = useState(false);
-  const [projectsOpen, setProjectsOpen] = useState(false);
+  const data = portfolioData;
+  const [toolboxQuery, setToolboxQuery] = useState("");
+  const [projectModal, setProjectModal] = useState<ProjectModalTarget | null>(null);
 
-  useEffect(() => subscribeToPortfolioData(setData), []);
-
-  const publishedProjects = useMemo(
-    () => data.projects.filter((project) => project.visibility === "published"),
-    [data.projects],
+  const projects = data.projects;
+  const favoriteProject = useMemo(
+    () => projects.find((project) => project.slug === data.favoriteProjectSlug) ?? null,
+    [projects, data.favoriteProjectSlug],
   );
-  const featuredProjects = useMemo(
-    () => publishedProjects.filter((project) => project.featured).slice(0, 6),
-    [publishedProjects],
-  );
-  const skills = useMemo(
-    () => data.settings.skills,
-    [data.settings.skills],
-  );
-  const modalProjects = useMemo(() => {
-    if (!projectModal) {
-      return [];
-    }
-
+  const projectModalMatches = useMemo(() => {
+    if (!projectModal) return [];
     if (projectModal.kind === "tech") {
-      return publishedProjects.filter((project) =>
-        project.technologies.some((technology) => technology.toLowerCase() === projectModal.name.toLowerCase()),
+      return projects.filter((project) =>
+        project.technologies.includes(projectModal.id),
       );
     }
+    return projects.filter((project) =>
+      (project.skills ?? []).includes(projectModal.id),
+    );
+  }, [projectModal, projects]);
+  const displayName = data.profile.name || "Jamil Orata";
+  const year = new Date().getFullYear();
+  const animatedCount = useCountUp(projects.length, 1600);
 
-    const skill = skills.find((item) => item.name === projectModal.name);
-    return skill ? publishedProjects.filter((project) => projectMatchesSkill(project, skill)) : [];
-  }, [projectModal, publishedProjects, skills]);
-  const featuredTechnologies = useMemo(
-    () => data.technologies.slice(0, 14),
-    [data.technologies],
+  // The Toolbox only surfaces tech/skills actually referenced by at least one
+  // project — the master `data.technologies` and `data.skills` lists are just
+  // the metadata registry (id → name + icon).
+  const usedTechIds = useMemo(
+    () => new Set(projects.flatMap((project) => project.technologies)),
+    [projects],
   );
-  const filteredTechnologies = useMemo(() => {
-    const query = techSearch.trim().toLowerCase();
-
-    if (!query) {
-      return featuredTechnologies;
-    }
-
-    return featuredTechnologies.filter((technology) => technology.name.toLowerCase().includes(query));
-  }, [featuredTechnologies, techSearch]);
-  const filteredSkills = useMemo(() => {
-    const query = skillSearch.trim().toLowerCase();
-
-    if (!query) {
-      return skills;
-    }
-
-    return skills.filter((skill) => skill.name.toLowerCase().includes(query));
-  }, [skillSearch, skills]);
-  const publishedProjectCount = data.projects.filter((project) => project.visibility === "published").length;
-  const displayName = data.profile.name.replace(" Andrew ", " ");
-  const totalTechPages = Math.ceil(filteredTechnologies.length / TECH_PAGE_SIZE);
-  const activeTechPage = Math.min(techPage, Math.max(0, totalTechPages - 1));
-  const visibleTechnologies = filteredTechnologies.slice(
-    activeTechPage * TECH_PAGE_SIZE,
-    activeTechPage * TECH_PAGE_SIZE + TECH_PAGE_SIZE,
+  const usedSkillIds = useMemo(
+    () => new Set(projects.flatMap((project) => project.skills ?? [])),
+    [projects],
   );
-  const hasTechPagination = totalTechPages > 1;
-  const totalSkillPages = Math.ceil(filteredSkills.length / SKILL_PAGE_SIZE);
-  const activeSkillPage = Math.min(skillPage, Math.max(0, totalSkillPages - 1));
-  const visibleSkills = filteredSkills.slice(
-    activeSkillPage * SKILL_PAGE_SIZE,
-    activeSkillPage * SKILL_PAGE_SIZE + SKILL_PAGE_SIZE,
+  const inUseTechnologies = useMemo(
+    () => data.technologies.filter((technology) => usedTechIds.has(technology.id)),
+    [data.technologies, usedTechIds],
   );
-  const hasSkillPagination = totalSkillPages > 1;
+  const inUseSkills = useMemo(
+    () => data.skills.filter((skill) => usedSkillIds.has(skill.id)),
+    [data.skills, usedSkillIds],
+  );
 
-  useEffect(() => {
-    setTechPage(0);
-  }, [techSearch]);
+  const toolboxQueryNormalized = toolboxQuery.trim().toLowerCase();
+  const filteredTechnologies = useMemo(
+    () =>
+      toolboxQueryNormalized
+        ? inUseTechnologies.filter((technology) =>
+            technology.name.toLowerCase().includes(toolboxQueryNormalized),
+          )
+        : inUseTechnologies,
+    [inUseTechnologies, toolboxQueryNormalized],
+  );
+  const filteredSkills = useMemo(
+    () =>
+      toolboxQueryNormalized
+        ? inUseSkills.filter((skill) => skill.name.toLowerCase().includes(toolboxQueryNormalized))
+        : inUseSkills,
+    [inUseSkills, toolboxQueryNormalized],
+  );
 
-  useEffect(() => {
-    setSkillPage(0);
-  }, [skillSearch]);
+  const workIntroReveal = useReveal<HTMLDivElement>();
+  const toolboxReveal = useReveal<HTMLDivElement>();
+  const contactReveal = useReveal<HTMLDivElement>();
 
   return (
-    <main>
-      <NavPill />
-      <ChatbotPreview />
-      {showFunFact ? (
-        <FunFactModal
-          funFact={data.profile.funFact}
-          onClose={() => setShowFunFact(false)}
-        />
-      ) : null}
+    <main className="bg-cream text-ink">
+      <SiteHeader email={data.profile.email} currentPath="/" photoUrl={data.profile.photoUrl} name={data.profile.name} />
       {projectModal ? (
         <RelatedProjectsModal
           label={projectModal.name}
           kind={projectModal.kind}
-          projects={modalProjects}
-          settings={data.settings}
+          projects={projectModalMatches}
           onClose={() => setProjectModal(null)}
         />
       ) : null}
-      <section id="top" className="section-pad bg-white max-[700px]:pb-8">
-        <div className="container">
-          <div className="grid items-center gap-4 md:grid-cols-[160px_minmax(0,1fr)] md:gap-8 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]">
-            <DesktopHeroPhoto
-              name={data.profile.name}
-              photoUrl={data.profile.photoUrl}
-              onFunFactClick={() => setShowFunFact((value) => !value)}
-              showFunFact={showFunFact}
-            />
-            <div className="grid max-w-4xl grid-cols-[minmax(104px,28vw)_minmax(0,1fr)] items-stretch gap-4 sm:grid-cols-[132px_minmax(0,1fr)] md:block">
-              <div className="row-span-3 md:hidden">
-                <MobileHeroPhoto
-                  name={data.profile.name}
-                  photoUrl={data.profile.photoUrl}
-                  onFunFactClick={() => setShowFunFact((value) => !value)}
-                  showFunFact={showFunFact}
-                />
-              </div>
-              <div className="self-end">
-                <h1 className="text-[clamp(1.85rem,8.5vw,3.5rem)] font-bold leading-none tracking-[-1px] text-ink md:text-[64px] md:tracking-[-2.125px]">
-                  {displayName}
-                </h1>
+
+      {/* HERO */}
+      <section id="top" className="relative min-h-[100svh] overflow-hidden pt-28 sm:pt-32">
+        <div className="container relative">
+          {data.profile.email ? (
+            <a
+              href={`mailto:${data.profile.email}`}
+              className="inline-flex items-center font-mono text-[12px] font-medium text-muted transition-colors hover:text-ink"
+            >
+              {data.profile.email}
+            </a>
+          ) : null}
+
+          <h1 className="serif-display animate-rise-in mt-12 text-[clamp(2.25rem,7vw,6.25rem)] [text-wrap:balance] sm:mt-16">
+            I&apos;ve worked on{" "}
+            <span className="serif-italic text-accent tabular-nums">
+              {animatedCount.toString().padStart(2, "0")}
+            </span>{" "}
+            projects, turning ideas into practical software.
+          </h1>
+
+          <div className="mt-12 max-w-xl">
+            <p className="text-[17px] leading-8 text-muted sm:text-lg animate-rise-in" style={{ animationDelay: "260ms" }}>
+              I&apos;m <span className="text-ink font-medium">{displayName}</span>, an AI &amp; software engineer based in the Philippines.
+              <br />
+              I specialize in AI integration and automation.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3 animate-rise-in" style={{ animationDelay: "340ms" }}>
+              <Link
+                href="/projects"
+                className="inline-flex items-center rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream transition hover:bg-accent"
+              >
+                See all projects
+              </Link>
+              {data.profile.githubUrl ? (
                 <a
-                  href={`mailto:${data.profile.email}`}
-                  className="mt-3 inline-flex text-sm font-semibold text-[#0075de] hover:underline sm:text-[15px]"
+                  href={data.profile.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="GitHub"
+                  className="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-full border border-[rgba(23,23,23,0.2)] text-sm font-medium text-ink transition hover:border-ink sm:h-auto sm:w-auto sm:px-5 sm:py-2.5"
                 >
-                  {data.profile.email}
+                  <Github size={14} />
+                  <span className="hidden sm:inline">GitHub</span>
+                  <ArrowUpRight size={14} className="hidden sm:inline-block" />
                 </a>
-              </div>
-              <div className="relative col-start-2" />
-              <div className="col-start-2 self-start">
-                <p className="text-[clamp(0.95rem,4vw,1.5rem)] font-semibold leading-snug text-muted">
-                  AI & Software Engineer
-                </p>
-                <div className="mt-8 flex flex-wrap items-center gap-2 sm:gap-3">
-                  <Link href="/projects" className="inline-flex items-center gap-2 rounded bg-[#0075de] px-3 py-2 text-sm font-semibold text-white hover:bg-[#005bab] sm:px-4 sm:text-[15px]">
-                    View {publishedProjectCount} projects <ArrowRight size={16} />
-                  </Link>
-                  <a href={data.profile.resumeUrl} className="rounded bg-black/[0.05] px-3 py-2 text-sm font-semibold text-ink hover:bg-black/[0.08] sm:px-4 sm:text-[15px]">
-                    Resume
-                  </a>
-                  <a href={data.profile.githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub" className="inline-flex h-10 w-10 items-center justify-center rounded text-ink hover:bg-black/[0.05] sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-[15px] sm:font-semibold sm:hover:bg-transparent sm:hover:underline">
-                    <Github size={16} /> <span className="hidden sm:inline">GitHub</span>
-                  </a>
-                  <a href={data.profile.linkedinUrl} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="inline-flex h-10 w-10 items-center justify-center rounded text-ink hover:bg-black/[0.05] sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-[15px] sm:font-semibold sm:hover:bg-transparent sm:hover:underline">
-                    <Linkedin size={16} /> <span className="hidden sm:inline">LinkedIn</span>
-                  </a>
-                </div>
-              </div>
+              ) : null}
+              {data.profile.linkedinUrl ? (
+                <a
+                  href={data.profile.linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="LinkedIn"
+                  className="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-full border border-[rgba(23,23,23,0.2)] text-sm font-medium text-ink transition hover:border-ink sm:h-auto sm:w-auto sm:px-5 sm:py-2.5"
+                >
+                  <Linkedin size={14} />
+                  <span className="hidden sm:inline">LinkedIn</span>
+                  <ArrowUpRight size={14} className="hidden sm:inline-block" />
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
-      </section>
-      <section id="tech-stack" className="bg-white pb-16">
-        <div className="container grid gap-12 lg:grid-cols-2">
-          <div id="skills">
-            <button
-              type="button"
-              aria-expanded={skillsOpen}
-              onClick={() => setSkillsOpen((value) => !value)}
-              className="flex items-center gap-2 text-left text-[28px] font-bold leading-none text-ink sm:text-[36px]"
-            >
-              <span>
-                Skills <span className="font-normal text-muted">({skills.length})</span>
-              </span>
-              <ChevronDown
-                size={24}
-                className={`text-muted transition-transform ${skillsOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {skillsOpen ? (
-              <>
-            <div className="mb-3 mt-4 flex flex-wrap items-center gap-2">
-              <label className="relative w-36 sm:w-40">
-                <span className="sr-only">Search skills</span>
-                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#0075de]" />
-                <input
-                  type="search"
-                  value={skillSearch}
-                  onChange={(event) => setSkillSearch(event.target.value)}
-                  placeholder="Search"
-                  className="h-8 w-full rounded-full border border-[#0075de] bg-white pl-8 pr-3 text-xs font-semibold text-ink outline-none placeholder:text-muted"
-                />
-              </label>
-              {hasSkillPagination ? (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Previous skills"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0075de] text-[#0075de] transition hover:bg-[#0075de] hover:text-white"
-                    onClick={() => setSkillPage((page) => (page - 1 + totalSkillPages) % totalSkillPages)}
-                  >
-                    <ChevronLeft size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next skills"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0075de] text-[#0075de] transition hover:bg-[#0075de] hover:text-white"
-                    onClick={() => setSkillPage((page) => (page + 1) % totalSkillPages)}
-                  >
-                    <ChevronRight size={15} />
-                  </button>
-                </>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {visibleSkills.map((skill) => (
-                <SkillPill
-                  key={skill.name}
-                  name={skill.name}
-                  icon={skillIconMap[skill.iconKey as keyof typeof skillIconMap] ?? Sparkles}
-                  onClick={() => setProjectModal({ kind: "skill", name: skill.name })}
-                />
-              ))}
-            </div>
-              </>
-            ) : null}
-          </div>
-          <div>
-            <button
-              type="button"
-              aria-expanded={techOpen}
-              onClick={() => setTechOpen((value) => !value)}
-              className="flex items-center gap-2 text-left text-[28px] font-bold leading-none text-ink sm:text-[36px]"
-            >
-              <span>
-                Tech <span className="font-normal text-muted">({featuredTechnologies.length})</span>
-              </span>
-              <ChevronDown
-                size={24}
-                className={`text-muted transition-transform ${techOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {techOpen ? (
-              <>
-            <div className="mb-3 mt-4 flex flex-wrap items-center gap-2">
-              <label className="relative w-36 sm:w-40">
-                <span className="sr-only">Search tech stack</span>
-                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#0075de]" />
-                <input
-                  type="search"
-                  value={techSearch}
-                  onChange={(event) => setTechSearch(event.target.value)}
-                  placeholder="Search"
-                  className="h-8 w-full rounded-full border border-[#0075de] bg-white pl-8 pr-3 text-xs font-semibold text-ink outline-none placeholder:text-muted"
-                />
-              </label>
-              {hasTechPagination ? (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Previous technologies"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0075de] text-[#0075de] transition hover:bg-[#0075de] hover:text-white"
-                    onClick={() => setTechPage((page) => (page - 1 + totalTechPages) % totalTechPages)}
-                  >
-                    <ChevronLeft size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next technologies"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0075de] text-[#0075de] transition hover:bg-[#0075de] hover:text-white"
-                    onClick={() => setTechPage((page) => (page + 1) % totalTechPages)}
-                  >
-                    <ChevronRight size={15} />
-                  </button>
-                </>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {visibleTechnologies.map((technology) => (
-                <TechnologyIcon
-                  key={technology.id}
-                  name={technology.name}
-                  icon={technology.icon}
-                  onClick={() => setProjectModal({ kind: "tech", name: technology.name })}
-                />
-              ))}
-            </div>
-              </>
-            ) : null}
-          </div>
+
+        <div className="container mt-20 pb-10 sm:mt-28">
+          <a href="#toolbox" aria-label="Scroll to next section" className="group inline-flex items-center gap-2">
+            <span className="inline-flex h-5 w-5 items-center justify-center text-ink/70 animate-scroll-cue transition-colors group-hover:text-accent">
+              <ArrowDown size={14} strokeWidth={2.2} />
+            </span>
+            <span className="mono-label text-quiet transition-colors group-hover:text-ink">Scroll</span>
+          </a>
         </div>
       </section>
-      <section id="featured" className="section-pad bg-white">
+
+      {/* TOOLBOX */}
+      <section id="toolbox" className="border-t border-[rgba(23,23,23,0.12)] bg-paper py-20 sm:py-24">
         <div className="container">
-          <div className="mb-8">
-            <button
-              type="button"
-              aria-expanded={projectsOpen}
-              onClick={() => setProjectsOpen((value) => !value)}
-              className="flex items-center gap-2 text-left text-[36px] font-bold leading-none tracking-[-1px] text-ink sm:text-[48px] sm:tracking-[-1.5px]"
-            >
-              <span>My Favorite Projects</span>
-              <ChevronDown
-                size={32}
-                className={`text-muted transition-transform ${projectsOpen ? "rotate-180" : ""}`}
+          <div
+            ref={toolboxReveal.ref}
+            className={`transition-all duration-700 ${
+              toolboxReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
+          >
+            <div className="mono-label text-quiet">Toolbox</div>
+            <h2 className="serif-display mt-3 text-[clamp(2rem,5vw,3.5rem)]">
+              What I work <span className="serif-italic text-muted">with.</span>
+            </h2>
+            <label className="relative mt-6 block w-full max-w-sm">
+              <span className="sr-only">Search tech and skills</span>
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
               />
-            </button>
-            {projectsOpen ? (
-              <p className="mt-3 max-w-2xl text-base leading-6 text-muted">
-                The work recruiters should see first: finished builds, useful experiments, and active projects labeled clearly.
-              </p>
-            ) : null}
+              <input
+                type="search"
+                value={toolboxQuery}
+                onChange={(event) => setToolboxQuery(event.target.value)}
+                placeholder="Search tech & skills"
+                className="h-10 w-full rounded-full border border-[rgba(23,23,23,0.18)] bg-cream pl-10 pr-9 font-mono text-[12px] text-ink placeholder:text-quiet transition focus:border-ink focus:ring-2 focus:ring-ink/15 focus-visible:[outline:none]"
+              />
+              {toolboxQuery ? (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => setToolboxQuery("")}
+                  className="absolute right-2.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-quiet transition hover:bg-black/[0.06] hover:text-ink focus-visible:[outline:none]"
+                >
+                  <X size={12} />
+                </button>
+              ) : null}
+            </label>
           </div>
-          {projectsOpen ? (
-            <>
-              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {featuredProjects.map((project) => (
-                  <ProjectCard key={project.id} project={project} settings={data.settings} />
+
+          {filteredTechnologies.length ? (
+            <div className="mt-10 sm:mt-14">
+              <div className="mono-label mb-4 text-quiet">
+                Tech
+                {toolboxQuery ? (
+                  <span className="ml-2 text-quiet">({filteredTechnologies.length})</span>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                {filteredTechnologies.map((technology) => (
+                  <TechnologyIcon
+                    key={technology.id}
+                    name={technology.name}
+                    icon={technology.icon}
+                    onClick={() =>
+                      setProjectModal({ kind: "tech", id: technology.id, name: technology.name })
+                    }
+                  />
                 ))}
               </div>
-              <Link href="/projects" className="mt-6 inline-flex items-center gap-2 rounded bg-[#0075de] px-3 py-2 text-sm font-semibold text-white hover:bg-[#005bab] sm:px-4 sm:text-[15px]">
-                View all projects <ArrowRight size={16} />
-              </Link>
-            </>
+            </div>
+          ) : null}
+
+          {filteredSkills.length ? (
+            <div className="mt-10">
+              <div className="mono-label mb-4 text-quiet">
+                Skills
+                {toolboxQuery ? (
+                  <span className="ml-2 text-quiet">({filteredSkills.length})</span>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                {filteredSkills.map((skill) => (
+                  <SkillPill
+                    key={skill.id}
+                    name={skill.name}
+                    icon={skillIconMap[skill.iconKey as keyof typeof skillIconMap] ?? Sparkles}
+                    onClick={() =>
+                      setProjectModal({ kind: "skill", id: skill.id, name: skill.name })
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {toolboxQuery && !filteredTechnologies.length && !filteredSkills.length ? (
+            <p className="mt-10 font-mono text-sm text-muted">
+              Nothing matches &ldquo;{toolboxQuery}&rdquo;.
+            </p>
           ) : null}
         </div>
       </section>
+
+      {/* SELECTED WORK */}
+      <section id="work" className="bg-cream pt-20 sm:pt-24">
+        <div className="container">
+          <div
+            ref={workIntroReveal.ref}
+            className={`transition-all duration-700 ${
+              workIntroReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
+          >
+            <div className="mono-label text-quiet">Favorite</div>
+            <h2 className="serif-display mt-3 text-[clamp(2.25rem,6vw,4.5rem)]">
+              My favorite <span className="serif-italic text-muted">project.</span>
+            </h2>
+            <Link
+              href="/projects"
+              className="group mt-6 inline-flex items-center gap-2 rounded-full border border-[rgba(23,23,23,0.2)] px-5 py-2.5 text-sm font-medium text-ink transition hover:border-ink"
+            >
+              View all projects
+              <ArrowUpRight size={14} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+
+          <div className="mt-6 sm:mt-8">
+            {favoriteProject ? (
+              <ProjectRow project={favoriteProject} index={0} />
+            ) : (
+              <div className="border-t border-[rgba(23,23,23,0.12)] py-16 text-center">
+                <p className="font-mono text-sm text-muted">No favorite project yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* CONTACT */}
+      <section id="contact" className="section-pad">
+        <div className="container">
+          <div
+            ref={contactReveal.ref}
+            className={`transition-all duration-700 ${
+              contactReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            }`}
+          >
+            <div className="mono-label text-quiet">Contact</div>
+            <h2 className="serif-display mt-3 text-[clamp(2.75rem,11vw,9rem)] leading-[0.95]">
+              Let&apos;s build <br />
+              <span className="serif-italic text-accent">something</span> good.
+            </h2>
+            {data.profile.email ? (
+              <a
+                href={`mailto:${data.profile.email}`}
+                className="group mt-10 inline-flex items-baseline gap-3 text-[clamp(1.25rem,3vw,2rem)] font-medium tracking-tightish text-ink"
+              >
+                <Mail size={20} className="translate-y-1 text-accent" />
+                <span className="underline decoration-[rgba(23,23,23,0.25)] decoration-1 underline-offset-[6px] transition-all group-hover:decoration-accent group-hover:underline-offset-[10px]">
+                  {data.profile.email}
+                </span>
+              </a>
+            ) : null}
+            <div className="mt-10 flex flex-wrap gap-2">
+              {data.profile.githubUrl ? (
+                <a
+                  href={data.profile.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-[rgba(23,23,23,0.2)] px-4 py-2 text-sm font-medium text-ink transition hover:border-ink"
+                >
+                  <Github size={14} /> GitHub <ArrowUpRight size={12} />
+                </a>
+              ) : null}
+              {data.profile.linkedinUrl ? (
+                <a
+                  href={data.profile.linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-[rgba(23,23,23,0.2)] px-4 py-2 text-sm font-medium text-ink transition hover:border-ink"
+                >
+                  <Linkedin size={14} /> LinkedIn <ArrowUpRight size={12} />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-[rgba(23,23,23,0.12)] py-8">
+        <div className="container">
+          <div className="mono-label text-quiet">© {year} {displayName}. All rights reserved.</div>
+        </div>
+      </footer>
     </main>
   );
+}
+
+function useCountUp(target: number, durationMs = 1500) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (target <= 0) {
+      setCount(0);
+      return;
+    }
+
+    // Always restart from 0 on mount or when target changes so the animation
+    // re-runs on client-side navigation back to this page.
+    setCount(0);
+    const start = performance.now();
+    let frame = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setCount(Math.round(target * eased));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [target, durationMs]);
+
+  return count;
 }
