@@ -1,22 +1,22 @@
 import { formatLabel } from "@/lib/analytics";
-import type { PortfolioData, SettingsOption, SkillSetting } from "@/lib/types";
+import type { PortfolioData, ProjectType, Skill } from "@/lib/types";
 
-export function projectMatchesSkill(project: PortfolioData["projects"][number], skill: SkillSetting) {
+export function projectMatchesSkill(project: PortfolioData["projects"][number], skill: Skill) {
   return (project.skills ?? []).includes(skill.id);
 }
 
-export function settingsOptionLabel(options: SettingsOption[], value: string) {
-  return options.find((option) => option.id === value)?.label ?? formatLabel(value);
+export function projectTypeLabel(projectTypes: ProjectType[], value: string) {
+  return projectTypes.find((type) => type.id === value)?.label ?? formatLabel(value);
 }
 
-export function skillLabels(skills: SkillSetting[], values: string[]) {
+export function skillLabels(skills: Skill[], values: string[]) {
   return values.map((value) => skills.find((skill) => skill.id === value)?.name ?? formatLabel(value));
 }
 
-export function settingsOptionsWithUsedValues(options: SettingsOption[], usedValues: string[]) {
+export function projectTypesWithUsedValues(projectTypes: ProjectType[], usedValues: string[]) {
   const used = new Set(usedValues);
-  const configured = options.map((option) => ({ value: option.id, label: option.label }));
-  const configuredValues = new Set(configured.map((option) => option.value));
+  const configured = projectTypes.map((type) => ({ value: type.id, label: type.label }));
+  const configuredValues = new Set(configured.map((type) => type.value));
   const unknown = [...used]
     .filter((value) => !configuredValues.has(value))
     .sort()

@@ -18,7 +18,10 @@ export function SearchableDropdown({
   const [query, setQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selected = options.find((option) => option.value === value) ?? options[0];
-  const filteredOptions = options.filter((option) => option.label.toLowerCase().includes(query.trim().toLowerCase()));
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  const isActive = !!selected && selected !== options[0];
 
   useEffect(() => {
     if (!open) {
@@ -59,35 +62,47 @@ export function SearchableDropdown({
         type="button"
         aria-label={ariaLabel}
         aria-expanded={open}
-        className="inline-flex h-8 min-w-36 items-center justify-between gap-2 rounded-full border border-[#0075de] bg-white px-3 text-xs font-semibold text-ink transition hover:bg-[#f2f9ff] sm:min-w-40"
+        className={`inline-flex h-10 min-w-36 items-center justify-between gap-2 rounded-full border px-4 text-sm font-medium transition sm:min-w-40 ${
+          isActive
+            ? "border-ink bg-ink text-cream hover:bg-accent hover:border-accent"
+            : "border-[rgba(23,23,23,0.2)] bg-paper text-ink hover:border-ink"
+        }`}
         onClick={() => {
           setOpen((value) => !value);
           setQuery("");
         }}
       >
-        <span>{selected?.label ?? "Select"}</span>
-        <ChevronDown size={14} className={`text-[#0075de] transition ${open ? "rotate-180" : ""}`} />
+        <span className="truncate">{selected?.label ?? "Select"}</span>
+        <ChevronDown
+          size={14}
+          className={`shrink-0 transition ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open ? (
-        <div className="absolute left-0 top-10 z-50 w-56 rounded-lg border border-black/10 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.18)]">
+        <div className="absolute left-0 top-12 z-50 w-64 rounded-lg border border-[rgba(23,23,23,0.12)] bg-cream p-2 shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
           <label className="relative block">
             <span className="sr-only">Search options</span>
-            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#0075de]" />
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search"
-              className="h-8 w-full rounded-full border border-[#0075de] bg-white pl-8 pr-3 text-xs font-semibold text-ink outline-none placeholder:text-muted"
+              className="h-9 w-full rounded-full border border-[rgba(23,23,23,0.18)] bg-paper pl-9 pr-3 text-sm text-ink placeholder:text-quiet transition focus:border-ink focus:ring-2 focus:ring-ink/15 focus-visible:[outline:none]"
               autoFocus
             />
           </label>
-          <div className="mt-2 max-h-48 overflow-y-auto">
+          <div className="mt-2 max-h-56 overflow-y-auto">
             {filteredOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
-                className={`block w-full rounded px-3 py-2 text-left text-xs font-semibold transition hover:bg-[#f2f9ff] ${option.value === value ? "text-[#0075de]" : "text-ink"}`}
+                className={`block w-full rounded-full px-3 py-1.5 text-left text-sm transition hover:bg-black/[0.04] ${
+                  option.value === value ? "font-medium text-ink" : "text-muted"
+                }`}
                 onClick={() => {
                   onChange(option.value);
                   setOpen(false);
@@ -98,7 +113,7 @@ export function SearchableDropdown({
               </button>
             ))}
             {!filteredOptions.length ? (
-              <div className="px-3 py-2 text-xs font-semibold text-muted">No results</div>
+              <div className="px-3 py-2 font-mono text-xs text-muted">No results</div>
             ) : null}
           </div>
         </div>
