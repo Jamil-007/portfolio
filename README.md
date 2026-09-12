@@ -1,16 +1,20 @@
 # Portfolio
 
-A one-page editorial portfolio for Jamil Orata. Built with Next.js, Tailwind, and a hand-rolled static content model — no CMS, no database, no admin panel.
+A one-page portfolio for Jamil Orata, AI engineer. Four full-height scroll-snap
+sections — Intro → Experience → Projects → Connect — with a side dot nav and a
+dark mode toggle.
+
+No CMS, no database, no admin panel, no API routes. Everything is one static page.
 
 ## Stack
 
 - Next.js (App Router)
 - React, TypeScript
-- Tailwind CSS
+- Tailwind CSS v4 — no `tailwind.config.ts`; theme tokens live in `src/app/globals.css`
+- HeroUI v3 (`@heroui/react`) — Chip, Card, Button, Link
 - `lucide-react` for icons
-- `react-markdown` + `remark-gfm` for project detail bodies
 
-Fonts (loaded via `next/font/google`): Instrument Serif (display), Geist Sans (body), Geist Mono (labels).
+Fonts (via `next/font/google`): Geist Sans (body), Geist Mono (small uppercase labels).
 
 ## Content model
 
@@ -20,16 +24,40 @@ All content lives in a single file:
 src/lib/portfolio-data.ts
 ```
 
-It exports `portfolioData`, which contains:
+It exports `portfolioData` with five keys:
 
-- `profile` — name, photo, email, GitHub, LinkedIn
-- `favoriteProjectSlug` — points at the one project shown on the homepage as "My favorite project."
-- `projects[]` — list of projects (title, slug, descriptions, technologies, skills, links, cover image)
-- `technologies[]` — master registry of tech (`id`, `name`, `icon`)
-- `skills[]` — master registry of skills (`id`, `name`, `iconKey`)
-- `projectTypes[]` — taxonomy (`webApp`, `mobile`, `tool`, `experiment`)
+| Key        | Holds                                                                      |
+| ---------- | -------------------------------------------------------------------------- |
+| `intro`    | name, tagline, role/company/period, availability, location, images, `focus[]` chips |
+| `experience` | section `heading`, `dateRange`, and `items[]` (period, role, company, description, tech) |
+| `projects` | section `heading`, `dateRange`, and `items[]`                               |
+| `connect`  | heading, description, email, `links[]` (GitHub, LinkedIn, …)                |
+| `footer`   | copyright and credit lines                                                  |
 
-The homepage Toolbox only surfaces tech/skills that appear in at least one project — the master lists are just the metadata registry (id → display info).
+There is no technology or skill registry. A project's `tech` is a plain array of
+display strings written on the project itself.
+
+## Adding a project
+
+1. Drop a thumbnail at `public/projects/<id>.png` (optional — a project with no
+   `image` renders an initials tile instead).
+2. Append to `portfolioData.projects.items`:
+
+```ts
+{
+  id: "my-thing",
+  title: "My Thing",
+  subtitle: "One-line category",
+  description: "Two sentences, max.",
+  image: "/projects/my-thing.png",   // optional
+  tech: ["Next.js", "Postgres"],
+  liveUrl: "https://…",          // optional
+  repositoryUrl: "https://…",    // optional
+}
+```
+
+Projects paginate 3 per page automatically. Keep descriptions to about three
+lines — each section has to fit one screen for scroll snapping to work.
 
 ## Commands
 
@@ -41,72 +69,37 @@ npm run build    # production build (full type-check + static generation)
 
 No env vars required.
 
-## Project cover images
-
-Save under `public/projects/<slug>.png` (or any image format Next/Image accepts) and reference as `coverImage: "/projects/<slug>.png"` in `portfolio-data.ts`.
-
-## Adding a new project from another codebase
-
-This repo ships two Claude Code slash commands that mechanize the import flow.
-
-### 1. In the source repo
-
-Copy `.claude/commands/portfolio-export.md` from this repo to the source repo's `.claude/commands/` (or install globally to `~/.claude/commands/`). Then run:
-
-```
-/portfolio-export
-```
-
-It analyzes the codebase (`README`, `package.json`, schemas, deployment configs, git activity) and writes a single `portfolio-export.md` at the source repo's root — entirely from files, no human input required.
-
-### 2. In this repo
-
-Move the generated file into `content/projects/` and run the import command:
-
-```bash
-mv /path/to/source/portfolio-export.md "content/projects/<slug>.md"
-```
-
-```
-/import-project <slug>
-```
-
-The command:
-
-- Validates required fields and tech/skill ids
-- Appends the new project to `portfolio-data.ts`
-- Adds any `newTechnologies` / `newSkills` to the master lists
-- Fetches the cover image if it's a URL (saves to `public/projects/<slug>.<ext>`)
-- Runs `npm run lint` as a smoke test
-- **Never** changes `favoriteProjectSlug` — that's a manual decision
-
-See `content/projects/README.md` for more on the storage convention and `templates/portfolio-project.template.md` for a reference example of an export.
-
 ## Directory map
 
 ```
 src/
-├── app/                # routes (App Router)
+├── app/
+│   ├── layout.tsx       # fonts + metadata
+│   ├── page.tsx         # renders PortfolioPage
+│   └── globals.css      # Tailwind v4 theme tokens, snap + animation utilities
 ├── components/
-│   ├── home/           # HomePage + favorite/toolbox/contact sections
-│   ├── layout/         # SiteHeader, NotFound
-│   ├── projects/       # ProjectsPage, ProjectDetailPage, SearchableDropdown
-│   └── shared/         # ProjectCard, ProjectRow, TechnologyIcon, SkillPill
+│   ├── home/
+│   │   ├── PortfolioPage/    # client shell: dark mode + section observer
+│   │   ├── HeroSection/
+│   │   ├── ExperienceSection/
+│   │   ├── ProjectsSection/     # + useProjectsSection (pagination)
+│   │   ├── ProjectImageModal/   # clickable thumbnail -> lightbox
+│   │   └── ConnectSection/
+│   └── layout/
+│       └── SideNav/
 └── lib/
-    ├── portfolio-data.ts    # ← single source of truth for content
-    ├── portfolio-utils.ts   # helpers (projectTypeLabel, skillLabels, …)
-    ├── types.ts             # PortfolioData and friends
-    └── analytics.ts         # formatLabel
+    ├── portfolio-data.ts     # ← single source of truth for content
+    └── types.ts
 
-content/projects/        # versioned project export .md files
-public/projects/         # cover images for each project
-templates/               # reference example of a portfolio-export.md
-.claude/commands/        # /portfolio-export, /import-project
+public/projects/         # project thumbnails
+public/cover.jpg         # hero banner graphic
+.claude/commands/        # /portfolio-export (for use in *other* repos)
 ```
 
 ## Conventions
 
-- Cream `#F5F1EA` background, ink `#171717` text, `#0075de` accent (used sparingly — usually italic serif highlights).
-- Pill shapes (`rounded-full`) for chips/buttons, restrained borders, no nested cards.
-- Scroll-triggered fade/rise via the `useReveal` hook. Respects `prefers-reduced-motion`.
+- Neutral off-white / near-black palette as oklch CSS variables; `.dark` swaps them.
+- Light weights, hairline borders, `rounded-lg` cards and `rounded-full` chips.
+- Slow, quiet transitions (`duration-300`–`duration-500`). Respects `prefers-reduced-motion`.
+- Scroll snapping is desktop-only (≥1024px); mobile stacks and scrolls normally.
 - 2-space indentation, named exports, comment the *why* not the *what*.

@@ -1,30 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const sans = Geist({
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
 });
 
-const mono = Geist_Mono({
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
-const serif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-serif",
-  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Jamil Orata — AI & Software Engineer",
-  description: "Portfolio of Jamil Orata. AI and software engineer building useful, considered tools.",
+  title: "Jamil Orata — AI Engineer",
+  description:
+    "AI engineer in Makati, Philippines. LLM applications, RAG, and evaluation — production retrieval systems and multi-agent workflows for government agencies.",
 };
 
 export default function RootLayout({
@@ -33,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${serif.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }

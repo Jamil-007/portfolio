@@ -16,3 +16,6 @@ tsconfig.tsbuildinfo
 .claude/settings.local.json
 .claude/worktrees/
 CLAUDE.local.md
+
+# Scratch space (resume PDF etc.) — never publish to a public repo
+temp/

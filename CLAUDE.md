@@ -4,24 +4,30 @@ Guidance for coding agents working in this repository.
 
 ## Project Overview
 
-A one-page editorial portfolio for Jamil Orata, built with:
+A one-page portfolio for Jamil Orata, built with:
 
 - Next.js App Router
 - React and TypeScript
-- Tailwind CSS
+- Tailwind CSS v4 (no JS config — theme tokens live in `src/app/globals.css`)
+- HeroUI v3 (`@heroui/react`) for Chip, Card, Button, Link
+- `lucide-react` for icons
 
-There is **no CMS, database, or admin panel**. All content (projects, profile, tech, skills) lives in a single TypeScript module at `src/lib/portfolio-data.ts` and is edited directly in code — typically via Claude Code.
+There is **no CMS, database, admin panel, or API route**. All content lives in
+`src/lib/portfolio-data.ts` and is edited directly in code.
+
+The visual design follows `../myportfolio` (a separate repo): four full-height
+scroll-snap sections — Intro → Experience → Projects → Connect — with a side dot
+nav and a dark mode toggle in the footer. Content comes from Jamil's resume.
 
 ## Architecture
 
-- Component-based. Pages (`src/app/<route>/page.tsx`) are thin shells that compose components from `src/components/`.
+- Component-based. `src/app/page.tsx` is a thin shell that renders `PortfolioPage`.
 - `src/components/` is grouped by domain:
   ```
   src/components/
-  ├── home/       # HomePage + RelatedProjectsModal + UseReveal hook
-  ├── layout/     # SiteHeader, NotFound
-  ├── projects/   # ProjectsPage, ProjectDetailPage, SearchableDropdown
-  └── shared/     # TechnologyIcon, SkillPill, ProjectCard, ProjectRow
+  ├── home/     # PortfolioPage (shell), HeroSection, ExperienceSection,
+  │             # ProjectsSection, ProjectImageModal, ConnectSection
+  └── layout/   # SideNav
   ```
 - Naming: PascalCase folder + PascalCase file — `Domain/ComponentName/ComponentName.tsx`.
 - A component's folder may contain up to 3 files:
@@ -32,57 +38,65 @@ There is **no CMS, database, or admin panel**. All content (projects, profile, t
 
 ## Library Code
 
-- `src/lib/` holds shared utilities, types, and the static content module.
-- `src/lib/portfolio-data.ts` — **single source of truth for all portfolio content**:
-  - `profile` (name, photo, email, github, linkedin)
-  - `favoriteProjectSlug` — names the project shown on the homepage as "My favorite project."
-  - `projects[]` (each with `id`, `slug`, `title`, `type`, `shortDescription`, `longDescription`, `technologies`, `skills`, `repositoryUrl`, `liveUrl`, `coverImage`)
-  - `technologies[]` — master registry (`id`, `name`, `icon`)
-  - `skills[]` — master registry (`id`, `name`, `iconKey`)
-  - `projectTypes[]` — taxonomy
+- `src/lib/portfolio-data.ts` — **single source of truth for all site content**:
+  - `intro` — name, tagline, role/company/period, availability, location, images, `focus[]` chips
+  - `experience` — `heading`, `dateRange`, and `items[]` (period, role, company, description, tech)
+  - `projects` — `heading`, `dateRange`, and `items[]`
+  - `connect` — heading, description, email, `links[]` (GitHub, LinkedIn, …)
+  - `footer` — copyright and credit lines
 - `src/lib/types.ts` — TypeScript types matching the shape above.
-- `src/lib/portfolio-utils.ts` — helpers: `projectTypeLabel`, `projectTypesWithUsedValues`, `projectMatchesSkill`, `skillLabels`.
-- `src/lib/analytics.ts` — small `formatLabel` helper.
+
+There is **no technology or skill registry**. A project's `tech` is a plain
+`string[]` of display labels (`["Next.js", "Python"]`) written on the project
+itself. Do not reintroduce id-based lookups, filtering, or a tech/skill modal.
 
 ## Data Flow
 
-- Public pages import `portfolioData` directly. No async loading, no subscriptions.
-- `/projects/[slug]` uses `generateStaticParams` from `portfolioData.projects` so every detail page is statically generated at build time.
-- The homepage Toolbox auto-filters the master `technologies` and `skills` arrays down to only those used by at least one project — the master lists are the metadata registry, not the display list.
-- The homepage "My favorite project." section looks up `projects.find(p => p.slug === data.favoriteProjectSlug)`.
+- `PortfolioPage` imports `portfolioData` directly. No async loading, no fetching.
+- The whole site is one statically prerendered route (`/`).
+- `usePortfolioPage` owns the two pieces of cross-section state: the `.dark` class
+  on `<html>`, and which section is on screen (drives the side-nav dots and the
+  one-time fade-in — sections ship as `opacity-0` and an IntersectionObserver adds
+  `.animate-fade-in-up`).
+- Projects and Experience both render every item in their list with no pager.
+  Each list is capped at three entries by hand, because a fourth row no longer
+  fits `100dvh`.
 
-## Adding new projects
+## Adding a project
 
-Two Claude Code slash commands automate the import flow:
+Append an entry to `portfolioData.projects.items`:
 
-### `/portfolio-export` (runs in a source repo)
+```ts
+{
+  id: "my-thing",
+  title: "My Thing",
+  subtitle: "One-line category",
+  description: "Two sentences, max.",
+  image: "/projects/my-thing.png",   // optional; omit for an initials tile
+  tech: ["Next.js", "Postgres"],     // plain display labels
+  liveUrl: "https://…",              // optional
+  repositoryUrl: "https://…",        // optional
+}
+```
 
-Lives at `.claude/commands/portfolio-export.md` in this repo — meant to be copied into each source repo's `.claude/commands/` (or installed globally at `~/.claude/commands/`). Analyzes the source codebase from files only (`README`, `package.json`, schemas, deployment configs, git history) and writes a `portfolio-export.md` at the source repo's root.
+The section renders every item, so keep the list at three. To feature a new
+project, swap one out rather than appending a fourth.
 
-### `/import-project` (runs in this repo)
-
-Lives at `.claude/commands/import-project.md`. Takes a path or a slug, validates the file, then:
-
-- Appends the new project entry to `portfolio-data.ts`
-- Adds any `newTechnologies` / `newSkills` to the master arrays
-- Fetches the cover image to `public/projects/<slug>.<ext>` if it's a URL
-- Moves the source `.md` into `content/projects/<slug>.md`
-- Runs `npm run lint`
-- **Never** changes `favoriteProjectSlug` — that's a manual decision the user makes explicitly.
-
-The full workflow is documented in `README.md` and `content/projects/README.md`.
+`.claude/commands/portfolio-export.md` still exists as a tool to copy into
+*other* repos; it writes a `portfolio-export.md` describing that codebase. There
+is no longer an `/import-project` command — the data shape is simple enough to
+edit by hand.
 
 ## Directories of note
 
-- `content/projects/` — versioned `.md` files for every imported project (named by slug). Edits here are the audit trail for what's in `portfolio-data.ts`.
-- `public/projects/` — cover images (`<slug>.png` or similar).
-- `templates/portfolio-project.template.md` — reference example of a finished export.
-- `.claude/commands/` — the two slash commands described above.
+- `public/projects/` — project thumbnails (`<id>.png`).
+- `public/jamilorata.png` — profile photo.
+- `.claude/commands/portfolio-export.md` — source-repo analysis command.
 
 ## Testing
 
 - Test framework: Vitest with React Testing Library (not yet installed — add when the first test is written).
-- Use TDD for hooks, utilities, and data transformations.
+- Use TDD for hooks and data transformations (`usePortfolioPage` is the main candidate).
 - Skip tests for leaf UI components and simple glue code unless explicitly asked.
 
 ## Commands
@@ -90,34 +104,63 @@ The full workflow is documented in `README.md` and `content/projects/README.md`.
 ```bash
 npm run dev      # local dev server
 npm run lint     # ESLint check (run after code changes)
-npm run build    # production build (run when touching routing, data shape, or types)
+npm run build    # production build (run when touching data shape or types)
 ```
 
 No env vars required.
 
-## Architecture Notes
+## UI Conventions
 
-- One-page homepage composition: `src/components/home/HomePage/HomePage.tsx` — Hero → Toolbox → Favorite project → Contact.
-- Project archive: `src/components/projects/ProjectsPage/ProjectsPage.tsx` (uses `ProjectCard`). Search + collapsible filters (type / tech / skill).
-- Project detail: `src/components/projects/ProjectDetailPage/ProjectDetailPage.tsx` (renders markdown via `react-markdown`).
-- Homepage favorite tile: `src/components/shared/ProjectRow/ProjectRow.tsx`.
-- Site header (avatar button + photo modal, name link, Projects, Get in touch): `src/components/layout/SiteHeader/SiteHeader.tsx`.
-- Tech/Skill modal: `src/components/home/RelatedProjectsModal/RelatedProjectsModal.tsx`. Click a Tech or Skill chip on the homepage → modal lists the projects that use it; each row is clickable to the project detail page.
+- Palette is a neutral off-white / near-black defined as oklch CSS variables in
+  `src/app/globals.css` (`--background`, `--foreground`, `--muted-foreground`).
+  Dark mode swaps them under `.dark`.
+- Typography: Geist Sans (body) and Geist Mono (small uppercase labels like
+  `WORK`, `FOCUS`, `ELSEWHERE`, the date range, and `LIVE`/`CODE`), loaded via
+  `next/font/google` in `src/app/layout.tsx`. No serif.
+- Weights stay light: headings are `font-light`, body is `text-muted-foreground`.
+- Borders are hairlines (`border-border`, often at `/50`), corners are `rounded-lg`
+  or `rounded-full` for chips.
+- Use `lucide-react` icons instead of hand-written SVGs.
+- Transitions are slow and quiet — `duration-300` to `duration-500`.
+- Respect `prefers-reduced-motion` (already wired in `globals.css`).
+
+### Keeping sections inside one screen
+
+Every section must fit `100dvh` or scroll snapping breaks. `.section-stack`,
+`.row-list`, and `.section-row` in `globals.css` set a `min(fixed, dvh)` rhythm
+so spacing tightens on short windows; all four sections fit down to ~620px tall.
+If you add a row or lengthen a description, re-measure. Note that Tailwind does
+not compile arbitrary values containing a bare comma, which is why these are
+plain CSS rather than `py-[min(1.25rem,1.9dvh)]`.
+
+### Reveal vs scrollspy
+
+`usePortfolioPage` runs two IntersectionObservers on purpose. Reveal uses
+`threshold: 0.01`; scrollspy uses a `-50%` rootMargin band. A single
+`threshold: 0.5` observer cannot do both — on a phone the stacked sections are
+taller than the viewport, so their ratio never reaches 0.5 and they would stay
+stuck at `opacity-0`.
+
+### HeroUI gotcha
+
+HeroUI variant classes can beat Tailwind utilities because they land later in
+the stylesheet, not because of class order. `Card variant="transparent"` sets
+`border: none`, so `ConnectSection` draws its outline with `ring-1 ring-border`
+instead, and `.project-lightbox` (unlayered CSS, so it outranks HeroUI's layered
+rule) overrides the modal width — which is capped on `.modal__dialog--lg`, not
+the container. If a style silently does nothing, check the variant CSS before
+assuming a typo.
 
 ## Product Behavior To Preserve
 
-- "My favorite project." surfaces the project whose slug equals `favoriteProjectSlug`. No per-project `featured` flag exists — the favorite is decided at the top level of the data file.
-- Every project in `portfolioData.projects` is published. There is no `visibility` field — exclude a project by removing it from the array.
-- Toolbox section: search box filters both Tech and Skills lists by name as you type. The Tech and Skills shown are only those used by at least one project.
-- Site header avatar is a button — clicking opens a modal with the larger circular photo and a short greeting.
-
-## UI Conventions
-
-- Visual system is editorial: cream `#F5F1EA` background, ink `#171717` text, `#0075de` as the accent (used sparingly — usually italic serif highlights).
-- Typography: Instrument Serif (display), Geist Sans (body), Geist Mono (labels) — loaded via `next/font/google` in `src/app/layout.tsx`.
-- Use `lucide-react` icons instead of custom SVGs when an icon exists.
-- Cards/buttons: pill shapes (`rounded-full`), restrained borders, no nested cards.
-- Motion: scroll-driven fade/rise (see `useReveal` hook). Respect `prefers-reduced-motion` (already wired via `globals.css`).
+- Four sections, in order: `intro`, `experience`, `projects`, `connect`. The
+  `SideNav` ids must stay in sync with the section `id` attributes, and
+  `SECTION_COUNT` in `usePortfolioPage` must match.
+- Scroll snapping is desktop-only (`min-width: 1024px`). On mobile the sections
+  stack and scroll normally so nothing is clipped.
+- In the Projects rows, the left column is a **thumbnail image**, not a year.
+  This is the one deliberate departure from `../myportfolio`.
+- Each project row can show `LIVE` and `CODE` links; both are optional per project.
 
 ## Code Style
 
@@ -125,24 +168,25 @@ No env vars required.
 - Use named exports over default exports.
 - 2-space indentation.
 
-## Workflow
-
-- For non-trivial requests, ask clarifying questions about edge cases before implementing.
-- For content changes (adding a project, updating bio, swapping a skill icon): edit `src/lib/portfolio-data.ts` directly OR use `/import-project` if the change comes from a `portfolio-export.md`. Always run `npm run lint` after.
-
 ## Editing Guidelines
 
 - Keep changes scoped to the requested behavior.
 - Prefer existing components and patterns over new abstractions.
-- Don't reintroduce a CMS, database, or auth layer unless explicitly asked.
+- Don't reintroduce a CMS, database, auth layer, project detail pages, or a
+  tech/skill registry unless explicitly asked.
 - Do not rewrite unrelated styling or data structures.
 
 ## Testing Checklist
 
-After changes, verify the relevant pages:
+After changes, verify `/`:
 
-- `/` — hero, toolbox (with search, only used tech/skills visible), favorite project, contact, tech/skill modal.
-- `/projects` — search, collapsible filter panel, project cards.
-- `/projects/[slug]` — renders the markdown long description, Live + Repo links.
+- Intro — name, tagline, WORK block, FOCUS chips, avatar over the cover banner.
+- Experience — three roles with period, company, and tech labels.
+- Projects — three rows, no pager. Thumbnails render (a project with no `image`
+  falls back to an initials tile), clicking a thumbnail opens the lightbox and
+  Escape closes it, LIVE/CODE sit under the thumbnail.
+- Connect — email link, social cards, footer, dark mode toggle flips the whole page.
+- Side nav dots highlight the section you are on and scroll to it.
+- Resize below 1024px: snapping turns off, everything stacks and stays readable.
 
-Minimum check: `npm run lint`. Use `npm run build` for routing, data shape, or type-level changes.
+Minimum check: `npm run lint`. Use `npm run build` for data shape or type changes.
