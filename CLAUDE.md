@@ -41,7 +41,7 @@ nav and a dark mode toggle in the footer. Content comes from Jamil's resume.
 - `src/lib/portfolio-data.ts` — **single source of truth for all site content**:
   - `intro` — name, tagline, role/company/period, availability, location, images, `focus[]` chips
   - `experience` — `heading`, `dateRange`, and `items[]` (period, role, company, description, tech)
-  - `projects` — `heading`, `dateRange`, and `items[]`
+  - `projects` — `heading` and `items[]`
   - `connect` — heading, description, email, `links[]` (GitHub, LinkedIn, …)
   - `footer` — copyright and credit lines
 - `src/lib/types.ts` — TypeScript types matching the shape above.

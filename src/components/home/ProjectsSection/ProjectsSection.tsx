@@ -20,10 +20,7 @@ export const ProjectsSection = forwardRef<HTMLElement, ProjectsSectionProps>(
         {/* `section-stack` / `row-list` / `section-row` set a vertical
             rhythm that shrinks on short windows — see globals.css. */}
         <div className="section-stack max-w-4xl mx-auto w-full">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <h2 className="text-3xl sm:text-4xl font-light">{content.heading}</h2>
-            <div className="text-sm text-muted-foreground font-mono">{content.dateRange}</div>
-          </div>
+          <h2 className="text-3xl sm:text-4xl font-light">{content.heading}</h2>
 
           <div className="row-list">
             {content.items.map((project) => (

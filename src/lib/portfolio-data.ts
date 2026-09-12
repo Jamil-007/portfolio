@@ -80,7 +80,6 @@ export const portfolioData: PortfolioData = {
 
   projects: {
     heading: "Featured Projects",
-    dateRange: "2022 — 2026", // PLACEHOLDER: adjust to your real range
     // Exactly three: the section renders every item with no pager, and four
     // rows no longer fit one screen.
     items: [

@@ -45,7 +45,6 @@ export type Project = {
 
 export type ProjectsSectionData = {
   heading: string;
-  dateRange: string;
   items: Project[];
 };
 
